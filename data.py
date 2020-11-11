@@ -110,8 +110,11 @@ class Corpus(object):
         path: string, it indicates the location of the dataset
         """
         self.train = self.tokenize(os.path.join(path, 'train.txt'), self.args.max_length)
-        self.valid = self.tokenize(os.path.join(path, 'valid.txt'), self.args.max_length)
+        # self.valid = self.tokenize(os.path.join(path, 'valid.txt'), self.args.max_length)
         self.test = self.tokenize(os.path.join(path, 'test.txt'), self.args.max_length)
+
+
+
 
     def make_dict(self, path):
         """

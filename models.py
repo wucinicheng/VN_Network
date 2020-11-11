@@ -2,10 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import Parameter
+import data
 
 from layers import GraphConvolution, WeightedGraphConvolutionNetwork
 
-def opts2params(opts, dictionary: data.Dictionary):
+def opts2params(opts, dictionary=data.Dictionary):
     """Convert command line options to a dictionary to construct a model"""
     params = {
         "rnn_type" : opts.rnn_type,

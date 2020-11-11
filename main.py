@@ -12,13 +12,29 @@ import models
 
 
 def options():
-    parser = argparse.ArgumentParser(description='PyTorch RNN/LSTM Language Model')
+    parser = argparse.ArgumentParser(description='VN Network: Embedding Newly Emerging Entities with Virtual Neighbors')
     parser.add_argument('--data', type=str, default='./dataset',
                         help='location of the data corpus')
+    parser.add_argument('--seed', type=int, default=1111,
+                        help='random seed')
+    parser.add_argument('--cuda', action='store_true',
+                        help='use CUDA')
+    parser.add_argument('--dict', type=str, default='./models/dict.pkl',
+                        help='path to (save/load) the dictionary')
+    parser.add_argument('--save', type=str, default='./models/model',
+                        help='prefix to save the final model')
+    parser.add_argument('--lr', type=float, default=20,
+                        help='initial learning rate')
+    parser.add_argument('--dropout', type=float, default=0.2,
+                        help='dropout applied to layers (0 = no dropout)')
+    parser.add_argument('--optim_type', type=str, default='SGD',
+                        help='type of the optimizer')
+    parser.add_argument('--epochs', type=int, default=40,
+                        help='upper epoch limit')
+
+
     parser.add_argument('--glove', type=str, default='',
                         help='path to the glove embedding')
-    parser.add_argument('--rnn_type', type=str, default='ResLSTM',
-                        help='type of recurrent net (RNN_TANH, RNN_RELU, LSTM, GRU, ResRNN_TANH, ResRNN_RELU, ResLSTM, ResGRU)')
     parser.add_argument('--direction', type=str, default='left2right',
                         help='type of language model direction (left2right, right2left, both)')
     parser.add_argument('--wo_tok', action='store_true',
@@ -39,14 +55,8 @@ def options():
                         help='number of hidden units of the character level rnn layer')
     parser.add_argument('--nlayers', type=int, default=2,
                         help='number of layers')
-    parser.add_argument('--optim_type', type=str, default='SGD',
-                        help='type of the optimizer')
-    parser.add_argument('--lr', type=float, default=20,
-                        help='initial learning rate')
     parser.add_argument('--clip', type=float, default=0.25,
                         help='gradient clipping')
-    parser.add_argument('--epochs', type=int, default=40,
-                        help='upper epoch limit')
     parser.add_argument('--batch_size', type=int, default=20, metavar='N',
                         help='batch size')
     parser.add_argument('--cut_freq', type=int, default=10,
@@ -55,22 +65,13 @@ def options():
                         help='cut off low-frequencey tokens in a corpus if the vocabulary size exceeds this value')
     parser.add_argument('--max_length', type=int, default=300,
                         help='skip sentences more than this value')
-    parser.add_argument('--dropout', type=float, default=0.2,
-                        help='dropout applied to layers (0 = no dropout)')
     parser.add_argument('--init_range', type=float, default=0.1,
                         help='initialization range of the weights')
     parser.add_argument('--tied', action='store_true',
                         help='tie the word embedding and softmax weights')
-    parser.add_argument('--seed', type=int, default=1111,
-                        help='random seed')
-    parser.add_argument('--cuda', action='store_true',
-                        help='use CUDA')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='report interval')
-    parser.add_argument('--save', type=str, default='./models/model',
-                        help='prefix to save the final model')
-    parser.add_argument('--dict', type=str, default='./models/dict.pkl',
-                        help='path to (save/load) the dictionary')
+
     opts = parser.parse_args()
     return opts
 
