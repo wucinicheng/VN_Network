@@ -1,45 +1,66 @@
 import logging
+import math
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.nn import Parameter
+from torch.nn.init import xavier_normal_
+
 import data
 
 from layers import GraphConvolution, WeightedGraphConvolutionNetwork
 
-def opts2params(opts, dictionary=data.Dictionary):
-    """Convert command line options to a dictionary to construct a model"""
-    params = {
-        "rnn_type" : opts.rnn_type,
-        "direction" : opts.direction,
-        "tok_len" : dictionary.tok_len(),
-        "tok_emb" : opts.tok_emb,
-        "tok_hid" : opts.tok_hid,
-        "char_len" : dictionary.char_len(),
-        "char_emb" : opts.char_emb,
-        "char_hid" : opts.char_hid,
-        "char_kmin" : opts.char_kmin,
-        "char_kmax" : opts.char_kmax,
-        "wo_char" : opts.wo_char,
-        "wo_tok" : opts.wo_tok,
-        "nlayers" : opts.nlayers,
-        "dropout" : opts.dropout,
-        "init_range" : opts.init_range,
-        "tied" : opts.tied
-    }
-    return params
+
+# GCN
+class GraphConvolution(torch.nn.Module):
+    """
+    Simple GCN layer, similar to https://arxiv.org/abs/1609.02907
+    """
+
+    def __init__(self, in_features, out_features, num_relations, bias=True):
+        super(GraphConvolution, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = Parameter(torch.FloatTensor(in_features, out_features))
+        self.num_relations = num_relations
+        self.alpha = torch.nn.Embedding(num_relations + 1, 1, padding_idx=0)
+        if bias:
+            self.bias = Parameter(torch.FloatTensor(out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.init_parameters()
+
+    def init_parameters(self):
+        stdv = 1. / math.sqrt(self.weight.size(1))
+        self.weight.data.uniform_(-stdv, stdv)
+        if self.bias is not None:
+            self.bias.data.uniform_(-stdv, stdv)
+
+    def forward(self, input, adj):
+
+        alp = self.alpha(adj[1]).t()[0]
+        A = torch.sparse_coo_tensor(adj[0], alp, torch.Size([adj[2], adj[2]]), requires_grad=True)
+        A = A + A.transpose(0, 1)
+        support = torch.mm(input, self.weight)
+        output = torch.sparse.mm(A, support)
+
+        if self.bias is not None:
+            return output + self.bias
+        else:
+            return output
+
+    def __repr__(self):
+        return self.__class__.__name__ + ' (' \
+               + str(self.in_features) + ' -> ' \
+               + str(self.out_features) + ')'
+
 
 class WGCN(nn.Module):
-    def __init__(self, triples, nentity, ndim0, ndim1, ndim2, ndim3, nrelation, dropout):
+    def __init__(self, triples, num_entities, init_emb_size, ndim1, ndim2, ndim3, nrelation, device, dropout=0.25):
+
         super(WGCN, self).__init__()
-        self.triples = triples
-        self.nentity = nentity
-        self.ndim0 = ndim0
-        self.ndim1 = ndim1
-        self.ndim2 = ndim2
-        self.ndim3 = ndim3
-        self.em_entity = nn.Embedding(nentity, ndim0)   # 初始化实体 embedding
+
+        self.emb_e = torch.nn.Embedding(num_entities, init_emb_size, padding_idx=0)   # 初始化实体 embedding
         self.re_attention_weight = Parameter(torch.FloatTensor(nrelation))  # 存储的是每一个关系的权重
 
         self.u = nn.Parameter(torch.Tensor(ndim3 * 3))
@@ -75,41 +96,34 @@ class WGCN(nn.Module):
         return up / down
 
 
-class DistMult(nn.Module):
-    def __init__(self, params):
+class StructureAwareLayer(nn.Module):
+    def __init__(self):
+        super(StructureAwareLayer, self).__init__()
+
+
+class DistMult(torch.nn.Module):
+    def __init__(self, num_entities, num_relations):
         super(DistMult, self).__init__()
-        self.params = params
-        self.ent_embeddings = nn.Embedding(self.params.total_ent, self.params.embedding_dim, max_norm=1)
-        self.rel_embeddings = nn.Embedding(self.params.total_rel, self.params.embedding_dim)
+        self.emb_e = torch.nn.Embedding(num_entities, Config.embedding_dim, padding_idx=0)
+        self.emb_rel = torch.nn.Embedding(num_relations, Config.embedding_dim, padding_idx=0)
+        self.inp_drop = torch.nn.Dropout(Config.input_dropout)
+        self.loss = torch.nn.BCELoss()
 
-        # self.criterion = nn.Softplus()
-        self.criterion = nn.MarginRankingLoss(self.params.margin, reduction='sum')
+    def init(self):
+        xavier_normal_(self.emb_e.weight.data)
+        xavier_normal_(self.emb_rel.weight.data)
 
-        self.init_weights()
+    def forward(self, e1, rel, X, A): # X and A haven't been used here.
+        e1_embedded= self.emb_e(e1)
+        rel_embedded= self.emb_rel(rel)
+        e1_embedded = e1_embedded.squeeze()
+        rel_embedded = rel_embedded.squeeze()
 
-        logging.info('Initialized the model successfully!')
+        e1_embedded = self.inp_drop(e1_embedded)
+        rel_embedded = self.inp_drop(rel_embedded)
 
-    def init_weights(self):
-        nn.init.xavier_uniform_(self.ent_embeddings.weight.data)
-        nn.init.xavier_uniform_(self.rel_embeddings.weight.data)
+        pred = torch.mm(e1_embedded*rel_embedded, self.emb_e.weight.transpose(1,0))
+        pred = torch.sigmoid(pred)
 
-    def get_score(self, h, t, r):
-        return - torch.sum(h * t * r, -1)
-
-    def forward(self, batch_h, batch_t, batch_r, batch_y):
-        h = self.ent_embeddings(torch.from_numpy(batch_h))
-        t = self.ent_embeddings(torch.from_numpy(batch_t))
-        r = self.rel_embeddings(torch.from_numpy(batch_r))
-        y = torch.from_numpy(batch_y).type(torch.FloatTensor)
-
-        score = self.get_score(h, t, r)
-
-        pos_score = score[0: int(len(score) / 2)]
-        neg_score = score[int(len(score) / 2): len(score)]
-
-        # regul = torch.mean(h ** 2) + torch.mean(t ** 2) + torch.mean(r ** 2)
-        # loss = torch.mean(self.criterion(score * y)) + self.params.lmbda * regul
-        loss = self.criterion(pos_score, neg_score, torch.Tensor([-1]))
-
-        return loss, pos_score, neg_score
+        return pred
 

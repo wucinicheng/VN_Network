@@ -31,65 +31,53 @@ def options():
                         help='type of the optimizer')
     parser.add_argument('--epochs', type=int, default=40,
                         help='upper epoch limit')
-
-
-    parser.add_argument('--glove', type=str, default='',
-                        help='path to the glove embedding')
-    parser.add_argument('--direction', type=str, default='left2right',
-                        help='type of language model direction (left2right, right2left, both)')
-    parser.add_argument('--wo_tok', action='store_true',
-                        help='without token embeddings')
-    parser.add_argument('--wo_char', action='store_true',
-                        help='without character embeddings')
-    parser.add_argument('--tok_emb', type=int, default=200,
-                        help='The dimension size of word embeddings')
-    parser.add_argument('--char_emb', type=int, default=50,
-                        help='The dimension size of character embeddings')
-    parser.add_argument('--char_kmin', type=int, default=1,
-                        help='minimum size of the kernel in the character encoder')
-    parser.add_argument('--char_kmax', type=int, default=5,
-                        help='maximum size of the kernel in the character encoder')
-    parser.add_argument('--tok_hid', type=int, default=250,
-                        help='number of hidden units of the token level rnn layer')
-    parser.add_argument('--char_hid', type=int, default=50,
-                        help='number of hidden units of the character level rnn layer')
-    parser.add_argument('--nlayers', type=int, default=2,
-                        help='number of layers')
-    parser.add_argument('--clip', type=float, default=0.25,
-                        help='gradient clipping')
     parser.add_argument('--batch_size', type=int, default=20, metavar='N',
                         help='batch size')
-    parser.add_argument('--cut_freq', type=int, default=10,
-                        help='cut off tokens in a corpus less than this value')
-    parser.add_argument('--max_vocab_size', type=int, default=100000,
-                        help='cut off low-frequencey tokens in a corpus if the vocabulary size exceeds this value')
-    parser.add_argument('--max_length', type=int, default=300,
-                        help='skip sentences more than this value')
-    parser.add_argument('--init_range', type=float, default=0.1,
-                        help='initialization range of the weights')
-    parser.add_argument('--tied', action='store_true',
-                        help='tie the word embedding and softmax weights')
-    parser.add_argument('--log-interval', type=int, default=10, metavar='N',
-                        help='report interval')
+    # parser.add_argument('--glove', type=str, default='',
+    #                     help='path to the glove embedding')
+    # parser.add_argument('--direction', type=str, default='left2right',
+    #                     help='type of language model direction (left2right, right2left, both)')
+    # parser.add_argument('--wo_tok', action='store_true',
+    #                     help='without token embeddings')
+    # parser.add_argument('--wo_char', action='store_true',
+    #                     help='without character embeddings')
+    # parser.add_argument('--tok_emb', type=int, default=200,
+    #                     help='The dimension size of word embeddings')
+    # parser.add_argument('--char_emb', type=int, default=50,
+    #                     help='The dimension size of character embeddings')
+    # parser.add_argument('--char_kmin', type=int, default=1,
+    #                     help='minimum size of the kernel in the character encoder')
+    # parser.add_argument('--char_kmax', type=int, default=5,
+    #                     help='maximum size of the kernel in the character encoder')
+    # parser.add_argument('--tok_hid', type=int, default=250,
+    #                     help='number of hidden units of the token level rnn layer')
+    # parser.add_argument('--char_hid', type=int, default=50,
+    #                     help='number of hidden units of the character level rnn layer')
+    # parser.add_argument('--nlayers', type=int, default=2,
+    #                     help='number of layers')
+    # parser.add_argument('--clip', type=float, default=0.25,
+    #                     help='gradient clipping')
+    # parser.add_argument('--batch_size', type=int, default=20, metavar='N',
+    #                     help='batch size')
+    # parser.add_argument('--cut_freq', type=int, default=10,
+    #                     help='cut off tokens in a corpus less than this value')
+    # parser.add_argument('--max_vocab_size', type=int, default=100000,
+    #                     help='cut off low-frequencey tokens in a corpus if the vocabulary size exceeds this value')
+    # parser.add_argument('--max_length', type=int, default=300,
+    #                     help='skip sentences more than this value')
+    # parser.add_argument('--init_range', type=float, default=0.1,
+    #                     help='initialization range of the weights')
+    # parser.add_argument('--tied', action='store_true',
+    #                     help='tie the word embedding and softmax weights')
+    # parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+    #                     help='report interval')
 
     opts = parser.parse_args()
     return opts
 
 
 def evaluate(opts, device, corpus, model, criterion, epoch):
-    """
-    Parameters
-    ----------
-        opts: command line arguments
-        device: device type
-        corpus: Corpus
-        model: Model
-        criterion: loss function
-        epoch: current epoch
-    Return
-    ------
-        total_loss: float
-    """
+
     epoch_start_time = time.time()
 
     model.eval()
@@ -121,18 +109,6 @@ def evaluate(opts, device, corpus, model, criterion, epoch):
 
 
 def train(opts, device, corpus, model, criterion, optimizer, lr, epoch):
-    """
-    Parameters
-    ----------
-        opts: command line arguments
-        device: device type
-        corpus: Corpus
-        model: Model
-        criterion: loss function
-        optimizer: optimizer
-        lr: learning rate (float)
-        epoch: current epoch
-    """
     # Turn on training mode which enables dropout.
     model.train()
     total_loss = 0.
